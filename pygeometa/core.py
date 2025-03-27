@@ -64,7 +64,7 @@ import yaml
 
 from pygeometa import cli_options
 from pygeometa.helpers import json_dumps
-from pygeometa.schemas import get_supported_schemas, load_schema
+from pygeometa.schemas import get_supported_schemas, load_schema, get_supported_validation_schemas
 
 LOGGER = logging.getLogger(__name__)
 
@@ -352,13 +352,14 @@ def import_metadata(schema: str, metadata: str) -> dict:
 
 
 def transform_metadata(input_schema: str, output_schema: str,
-                       metadata: str) -> str:
+                       metadata: str, validate: bool) -> str | None:
     """
     Transform metadata
 
     :param input_schema: input schema / format
     :param output_schema: output schema / format
-    :metadata: metadata string
+    :param metadata: metadata string
+    :param validate: whether to validate output
 
     :returns: transformed metadata or `None`
     """
@@ -369,6 +370,8 @@ def transform_metadata(input_schema: str, output_schema: str,
         LOGGER.info(f'Processing into {output_schema}')
         schema_object_output = load_schema(output_schema)
         content = schema_object_output.write(content)
+        if validate and not schema_object_output.validate(content):
+            raise RuntimeError('Validation failed')
     except Exception as err:
         LOGGER.debug(err)
         return None
@@ -640,12 +643,16 @@ def validate(ctx, mcf, verbosity):
 @click.option('--output-schema', required=True,
               type=click.Choice(get_supported_schemas()),
               help='Metadata schema of input file')
+@click.option('--validate', requiret=False, is_flag=True,)
 def transform(ctx, metadata_file, input_schema, output_schema, output,
-              verbosity):
+              validate, verbosity):
     """transform metadata"""
 
+    if validate and output_schema not in get_supported_validation_schemas():
+        raise click.ClickException('Output schema does not support validation')
+
     content = transform_metadata(input_schema, output_schema,
-                                 metadata_file.read())
+                                 metadata_file.read(), validate)
 
     if content is None:
         raise click.ClickException('No supported input schema detected/found')

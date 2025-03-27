@@ -66,7 +66,8 @@ SCHEMAS = {
 
 
 def get_supported_schemas(details: bool = False,
-                          include_autodetect: bool = False) -> list:
+                          include_autodetect: bool = False,
+) -> list:
     """
     Get supported schemas
 
@@ -104,12 +105,14 @@ def get_supported_schemas(details: bool = False,
         schema = load_schema(key)
         can_read = has_mode(schema, 'import_')
         can_write = has_mode(schema, 'write')
+        can_validate = has_mode(schema, 'validate')
 
         schema_matrix.append({
             'id': key,
             'description': schema.description,
             'read': can_read,
-            'write': can_write
+            'write': can_write,
+            'validate': can_validate
         })
 
     if include_autodetect:
@@ -121,6 +124,23 @@ def get_supported_schemas(details: bool = False,
         })
 
     return schema_matrix
+
+
+def get_supported_validation_schemas() -> list:
+    """
+    Get supported schemas with validation
+
+    :returns: list of supported schemas with validation
+    """
+
+    schemas = get_supported_schemas(details=True)
+    validation_schemas = []
+
+    for schema in schemas:
+        if schema['validate']:
+            validation_schemas.append(schema['id'])
+
+    return validation_schemas
 
 
 def load_schema(schema_name: str) -> BaseOutputSchema:

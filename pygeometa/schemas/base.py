@@ -98,5 +98,16 @@ class BaseOutputSchema:
 
         raise NotImplementedError()
 
+    def validate(self, metadata: Union[dict, str]) -> bool:
+        """
+        Validate metadata against schema
+
+        :param metadata: metadata content
+
+        :returns: `bool` of validation result
+        """
+
+        raise NotImplementedError()
+
     def __repr__(self):
         return f'<{self.name.upper()}OutputSchema> {self.name}'
