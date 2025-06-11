@@ -352,13 +352,14 @@ def import_metadata(schema: str, metadata: str) -> dict:
 
 
 def transform_metadata(input_schema: str, output_schema: str,
-                       metadata: str) -> str:
+                       metadata: str, validate: bool) -> str | None:
     """
     Transform metadata
 
     :param input_schema: input schema / format
     :param output_schema: output schema / format
-    :metadata: metadata string
+    :param metadata: metadata string
+    :param validate: whether to validate output
 
     :returns: transformed metadata or `None`
     """
@@ -369,6 +370,8 @@ def transform_metadata(input_schema: str, output_schema: str,
         LOGGER.info(f'Processing into {output_schema}')
         schema_object_output = load_schema(output_schema)
         content = schema_object_output.write(content)
+        if validate and not schema_object_output.validate(content):
+            raise RuntimeError('Validation failed')
     except Exception as err:
         LOGGER.debug(err)
         return None
@@ -609,7 +612,7 @@ def schemas(ctx, verbosity):
     click.echo('Supported schemas')
 
     for schema in get_supported_schemas(details=True):
-        s = f"{schema['id']} (read: {schema['read']}, write: {schema['write']}): {schema['description']}"  # noqa
+        s = f"{schema['id']} (read: {schema['read']}, write: {schema['write']}, validate: {schema['validate']}): {schema['description']}"  # noqa
         click.echo(s)
 
 
@@ -640,12 +643,16 @@ def validate(ctx, mcf, verbosity):
 @click.option('--output-schema', required=True,
               type=click.Choice(get_supported_schemas()),
               help='Metadata schema of input file')
+@click.option('--validate', required=False, is_flag=True,)
 def transform(ctx, metadata_file, input_schema, output_schema, output,
-              verbosity):
+              validate, verbosity):
     """transform metadata"""
 
+    if validate and output_schema.has_mode('validate'):
+        raise click.ClickException('Output schema does not support validation')
+
     content = transform_metadata(input_schema, output_schema,
-                                 metadata_file.read())
+                                 metadata_file.read(), validate)
 
     if content is None:
         raise click.ClickException('No supported input schema detected/found')
